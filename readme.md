@@ -8,7 +8,9 @@
 # Setup
 
 `bundle install`
+
 `chmod +x ./bin/crypto-news`
+
 `chmod +x ./bin/crypto-history`
 
 See examples below

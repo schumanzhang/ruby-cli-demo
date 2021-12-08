@@ -1,0 +1,63 @@
+#!/usr/bin/env ruby
+
+require_relative "../config/environment.rb"
+
+command = ARGV[0].to_s
+ARGV.clear
+
+running = true
+
+if command == "earnings"
+
+    while running do
+        puts "Which cryptocurrency are you interested in?"
+        name = gets.chomp.to_s
+
+        puts "You are interested in #{name}, which date would you like to start investing?"
+        date = gets.chomp.to_s
+
+        # 20-12-2020
+        if date.length != 10 
+            puts "Your date is not valid"
+            exit 1
+        end
+
+        puts "How much did you want to invest?"
+        amount = gets.chomp.to_f
+
+        puts "You invested $#{amount} of #{name} on #{date}"
+
+        historical = APIClient.get_historical_price(name, date)
+
+        if historical.nil?
+            puts "Error getting crypto data"
+            exit 1
+        end
+
+        past_price = historical['market_data']['current_price']['usd']
+
+        current = APIClient.get_current_price(name)
+
+        if current.nil?
+            puts "Error getting crypto data"
+            exit 1
+        end
+
+        current_price = current['market_data']['current_price']['usd']
+
+        earnings = Earnings.calculate_earnings(past_price, current_price, amount)
+        puts "Your return is $#{earnings}, would you like to try again (Y/N)"
+
+        again = gets.chomp.to_s
+
+        if again == "N"
+            running = false
+
+        elsif again != "Y"
+            puts "invalid input"
+            exit 1
+        end
+
+    end
+
+end

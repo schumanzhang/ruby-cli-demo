@@ -1,0 +1,112 @@
+#!/usr/bin/env ruby
+
+require_relative "../config/environment.rb"
+
+options = {}
+
+parser = OptionParser.new do |opt|
+    opt.banner = "Usage crypto-news [options]"
+
+    opt.on("-c", "--currencies", "Shows the top 10 currencies") do |currencies|
+        options[:currencies] = currencies
+    end
+
+    opt.on("-p", "--price", "Returns live price of a currency") do |price|
+        options[:price] = price
+    end
+
+    opt.on("-e", "--earnings", "Calculate earnings based on historical prices") do |earnings|
+        options[:earnings] = earnings
+    end
+
+    # required argument
+    opt.on("-n", "--name=NAME", "[Required] Specify the name of the cryptocurrency", String) do |name|
+        options[:name] = name
+    end
+
+    opt.on("-a", "--amount=AMOUNT", "[Required] Amount of money invested", Float) do |amount|
+        options[:amount] = amount
+    end
+
+    opt.on("-d", "--date=DATE", "[Required] Date for the historical price", String) do |date_string|
+        options[:date] = date_string
+    end
+
+    # help section
+    opt.on("-h", "--help", "See help") do
+        puts opt
+        exit
+    end
+end
+
+begin
+    parser.parse!
+
+    if !options[:currencies].nil?
+        if options.key?(:price) || options.key?(:earnings)
+            raise OptionParser::InvalidArgument.new("Price or earning options don't go with currencies option")
+        end
+
+        # run the code to scrape top 10 and provide a response
+        currencies = Scraper.get_top_currencies
+        puts Currency.get_top_currencies(currencies)
+
+    elsif !options[:price].nil?
+        if options.key?(:currencies) || options.key?(:earnings)
+            raise OptionParser::InvalidArgument.new("Currencies or earnings options don't go with price option")
+        end
+
+        # must have name argument
+        if options[:name].nil?
+            raise OptionParser::MissingArgument.new("Missing argument(s) detected: name")
+        end
+
+        # return the live price
+        currencies = Scraper.get_top_currencies
+        found = Currency.is_valid_currency(options[:name], currencies)
+
+        if found.nil?
+            puts "This cryptocurrency is not in our top 10"
+        else
+            puts found.price
+        end
+
+    elsif !options[:earnings].nil?
+        if options.key?(:currencies) || options.key?(:price)
+            raise OptionParser::InvalidArgument.new("Currencies or price options don't go with earnings option")
+        end
+
+        if options[:name].nil?
+            raise OptionParser::MissingArgument.new("Missing argument(s) detected: name")
+        end
+
+        if options[:date].nil?
+            raise OptionParser::MissingArgument.new("Missing argument(s) detected: date")
+        end
+
+        if options[:amount].nil?
+            raise OptionParser::MissingArgument.new("Missing argument(s) detected: amount")
+        end
+
+        # calculate the earnings
+        historical = APIClient.get_historical_price(options[:name], options[:date])
+        past_price = historical["market_data"]["current_price"]["usd"]
+
+        current = APIClient.get_current_price(options[:name])
+        current_price = current["market_data"]["current_price"]["usd"]
+
+        earnings = Earnings.calculate_earnings(past_price, current_price, options[:amount])
+        puts "Your return would be $#{earnings}"
+    end
+
+rescue OptionParser::InvalidArgument => e
+    STDERR.puts %Q[#{e.message.capitalize}. Run "#{File.basename($0)}" --help for details.]
+    exit 1
+rescue OptionParser::InvalidOption => e
+    STDERR.puts %Q[#{e.message.capitalize}. Run "#{File.basename($0)}" --help for details.]
+    exit 2
+rescue OptionParser::MissingArgument => e
+    STDERR.puts %Q[#{e.message.capitalize}. Run "#{File.basename($0)}" --help for details.]
+    exit 3
+end
+

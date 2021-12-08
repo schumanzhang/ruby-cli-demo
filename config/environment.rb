@@ -1,0 +1,11 @@
+require "nokogiri"
+require "open-uri"
+require "uri"
+require "net/http"
+require "json"
+require "optparse"
+
+require_relative "../model/currency.rb"
+require_relative "../lib/api_client.rb"
+require_relative "../lib/scraper.rb"
+require_relative "../lib/earnings.rb"
